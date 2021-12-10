@@ -3,51 +3,51 @@ Description: Cloudformation script for deploying a robust WordPress installation
 
 Parameters:
 # Networks:
-  WP-VPC-CIDR:
+  WPVPCCIDR:
     Description: WP VPC IP address
     Type: String
     Default: "10.10.0.0/16"
 
 # Public Subnets
-  PublicSubnet1-CIDR:
+  PublicSubnet1CIDR:
     Description: Public subnet IP range
     Type: String
     Default: "10.10.0.0/24"
 
-  PublicSubnet2-CIDR:
+  PublicSubnet2CIDR:
     Description: Public subnet IP range
     Type: String
     Default: "10.10.1.0/24"
 
-  PublicSubnet3-CIDR:
+  PublicSubnet3CIDR:
     Description: Public subnet IP range
     Type: String
     Default: "10.10.2.0/24"
 
   # private subnets
-  PrivateSubnet1-CIDR:
+  PrivateSubnet1CIDR:
     Description: Private subnet IP range
     Type: String
     Default: "10.10.10.0/24"
 
-  PrivateSubnet2-CIDR:
+  PrivateSubnet2CIDR:
     Description: Private subnet IP
     Type: String
     Default: "10.10.11.0/24"
 
-  PrivateSubnet3-CIDR:
+  PrivateSubnet3CIDR:
     Description: Private subnet IP
     Type: String
     Default: "10.10.12.0/24"
 
 # Fake corporate network for internal connections
 
-  FakeCorpPublicSubnet-CIDR:
+  FakeCorpPublicSubnetCIDR:
     Description: Fake Co Pty Ltd internal network
     Type: String
     Default: "10.10.20.0/24"
 
-  FakeCorpPrivateSubnet-CIDR:
+  FakeCorpPrivateSubnetCIDR:
     Description: Fake Co Pty Ltd sysadim network
     Type: String
     Default: "10.10.21.0/24"
@@ -63,7 +63,7 @@ Resources:
   ACWPVPC:
     Type: AWS::EC2::VPC
     Properties:
-      CidrBlock: !Ref WP-VPC-CIDR
+      CidrBlock: !Ref WPVPCCIDR
       EnableDnsSupport: true
       EnableDnsHostnames: true
       Tags:
@@ -90,7 +90,7 @@ Resources:
     Properties:
       VpcId: !Ref ACWPVPC
       AvailabilityZone: !Select [ 0, !GetAZs '' ]
-      CidrBlock: !Ref PublicSubnet1-CIDR
+      CidrBlock: !Ref PublicSubnet1CIDR
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Product
@@ -103,7 +103,7 @@ Resources:
     Properties:
       VpcId: !Ref ACWPVPC
       AvailabilityZone: !Select [ 1, !GetAZs  '' ]
-      CidrBlock: !Ref PublicSubnet2-CIDR
+      CidrBlock: !Ref PublicSubnet2CIDR
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Product
@@ -116,7 +116,7 @@ Resources:
     Properties:
       VpcId: !Ref ACWPVPC
       AvailabilityZone: !Select [ 2, !GetAZs  '' ]
-      CidrBlock: !Ref PublicSubnet3-CIDR
+      CidrBlock: !Ref PublicSubnet3CIDR
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Product
@@ -129,7 +129,7 @@ Resources:
     Properties:
       VpcId: !Ref ACWPVPC
       AvailabilityZone: !Select [ 2, !GetAZs  '' ]
-      CidrBlock: !Ref FakeCorpPublicSubnet-CIDR
+      CidrBlock: !Ref FakeCorpPublicSubnetCIDR
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Product
@@ -144,7 +144,7 @@ Resources:
     Properties:
       VpcId: !Ref ACWPVPC
       AvailabilityZone: !Select [ 0, !GetAZs  '' ]
-      CidrBlock: !Ref PrivateSubnet1-CIDR
+      CidrBlock: !Ref PrivateSubnet1CIDR
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Product
@@ -157,7 +157,7 @@ Resources:
     Properties:
       VpcId: !Ref ACWPVPC
       AvailabilityZone: !Select [ 1, !GetAZs  '' ]
-      CidrBlock: !Ref PrivateSubnet2-CIDR
+      CidrBlock: !Ref PrivateSubnet2CIDR
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Product
@@ -170,7 +170,7 @@ Resources:
     Properties:
       VpcId: !Ref ACWPVPC
       AvailabilityZone: !Select [ 2, !GetAZs  '' ]
-      CidrBlock: !Ref PrivateSubnet3-CIDR
+      CidrBlock: !Ref PrivateSubnet3CIDR
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Product
@@ -183,7 +183,7 @@ Resources:
     Properties:
       VpcId: !Ref ACWPVPC
       AvailabilityZone: !Select [ 2, !GetAZs  '' ]
-      CidrBlock: !Ref FakeCorpPrivateSubnet-CIDR
+      CidrBlock: !Ref FakeCorpPrivateSubnetCIDR
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Product
@@ -343,25 +343,25 @@ Resources:
     Type: AWS::EC2::Route
     Properties:
       RouteTableId: !Ref PrivateRouteTable
-      DestinationCidrBlock: !Ref PublicSubnet1-CIDR
+      DestinationCidrBlock: !Ref PublicSubnet1CIDR
 
   DefaultPrivateRoute2:
     Type: AWS::EC2::Route
     Properties:
       RouteTableId: !Ref PrivateRouteTable
-      DestinationCidrBlock: !Ref PublicSubnet2-CIDR
+      DestinationCidrBlock: !Ref PublicSubnet2CIDR
 
   DefaultPrivateRoute3:
     Type: AWS::EC2::Route
     Properties:
       RouteTableId: !Ref PrivateRouteTable
-      DestinationCidrBlock: !Ref PublicSubnet3-CIDR
+      DestinationCidrBlock: !Ref PublicSubnet3CIDR
 
   DefaultPrivateRouteCorp:
     Type: AWS::EC2::Route
     Properties:
       RouteTableId: !Ref PrivateRouteTable
-      DestinationCidrBlock: !Ref PublicSubnetCorp-CIDR
+      DestinationCidrBlock: !Ref PublicSubnetCorpCIDR
 
 
 #######################################################
@@ -377,7 +377,7 @@ Resources:
 # SG for masintenance subnet to RDS = 3306
 
 
-  WebServer-SG:
+  WebServerSG:
     Type: AWS::EC2::SecurityGroup
     Condition: IsProd
     Properties:
@@ -393,7 +393,7 @@ Resources:
         ToPort: '443'
         CidrIp: !Ref TheInternetIP
 
-  SSH-SG:
+  SSHSG:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Enable access from internal sources
@@ -402,13 +402,13 @@ Resources:
       - FromPort: '80'
         IpProtocol: tcp
         ToPort: '80'
-        CidrIp: !Ref FakeCorpPrivateSubnet-CIDR
+        CidrIp: !Ref FakeCorpPrivateSubnetCIDR
       - FromPort: '443'
         IpProtocol: tcp
         ToPort: '443'
-        CidrIp: !Ref FakeCorpPrivateSubnet-CIDR
+        CidrIp: !Ref FakeCorpPrivateSubnetCIDR
 
-  DB-SG:
+  DBSG:
     Type: AWS::RDS::DBSecurityGroup
     Properties:
       GroupDescription: Allow DB access from private networks
@@ -422,45 +422,45 @@ Resources:
 
 # EC2 instances:
 # Frontend
-  AC-WP-webserver1:
+  ACWPwebserver1:
     Type: "AWS::EC2::Instance"
     Properties:
       ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMALINUX] # Dynamic mapping + Pseudo Parameter
       InstanceType: !FindInMap [InstanceSize, !Ref EnvironmentSize, EC2]
       SubnetId: PublicSubnet1
       SecurityGroupIds:
-        - !Ref SSH-SG
-        - !Ref WebServer-SG
+        - !Ref SSHSG
+        - !Ref WebServerSG
       Tags:
         - Key: Product
           Value: WordPress
         - Key: Name
           Value: frontend EC2 (AZ1)
 
-  AC-WP-webserver2:
+  ACWPwebserver2:
     Type: "AWS::EC2::Instance"
     Properties:
       ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMALINUX] # Dynamic mapping + Pseudo Parameter
       InstanceType: !FindInMap [InstanceSize, !Ref EnvironmentSize, EC2]
       SubnetId: PublicSubnet2
       SecurityGroupIds:
-        - !Ref SSH-SG
-        - !Ref WebServer-SG
+        - !Ref SSHSG
+        - !Ref WebServerSG
       Tags:
         - Key: Product
           Value: WordPress
         - Key: Name
           Value: frontend EC2 (AZ2)
 
-  AC-WP-webserver3:
+  ACWPwebserver3:
     Type: "AWS::EC2::Instance"
     Properties:
       ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMALINUX] # Dynamic mapping + Pseudo Parameter
       InstanceType: !FindInMap [InstanceSize, !Ref EnvironmentSize, EC2]
       SubnetId: PublicSubnet3
       SecurityGroupIds:
-        - !Ref SSH-SG
-        - !Ref WebServer-SG
+        - !Ref SSHSG
+        - !Ref WebServerSG
       Tags:
         - Key: Product
           Value: WordPress
@@ -468,42 +468,42 @@ Resources:
           Value: frontend EC2 (AZ3)
 
 # Backend
-  AC-WP-app1:
+  ACWPapp1:
     Type: "AWS::EC2::Instance"
     Properties:
       ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMALINUX] # Dynamic mapping + Pseudo Parameter
       InstanceType: !FindInMap [InstanceSize, !Ref EnvironmentSize, EC2]
       SubnetId: PrivateSubnet1
       SecurityGroupIds:
-        - !Ref SSH-SG
+        - !Ref SSHSG
       Tags:
         - Key: Product
           Value: WordPress
         - Key: Name
           Value: WP app (AZ1)
 
-  AC-WP-app2:
+  ACWPapp2:
     Type: "AWS::EC2::Instance"
     Properties:
       ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMALINUX] # Dynamic mapping + Pseudo Parameter
       InstanceType: !FindInMap [InstanceSize, !Ref EnvironmentSize, EC2]
       SubnetId: PrivateSubnet2
       SecurityGroupIds:
-        - !Ref SSH-SG
+        - !Ref SSHSG
       Tags:
         - Key: Product
           Value: WordPress
         - Key: Name
           Value: WP app (AZ2)
 
-  AC-WP-app3:
+  ACWPapp3:
     Type: "AWS::EC2::Instance"
     Properties:
       ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMALINUX] # Dynamic mapping + Pseudo Parameter
       InstanceType: !FindInMap [InstanceSize, !Ref EnvironmentSize, EC2]
       SubnetId: PrivateSubnet3
       SecurityGroupIds:
-        - !Ref SSH-SG
+        - !Ref SSHSG
       Tags:
         - Key: Product
           Value: WordPress
@@ -511,14 +511,14 @@ Resources:
           Value: WP app (AZ3)
 
 # Corp
-  AC-Jump-Corp:
+  ACJumpCorp:
     Type: "AWS::EC2::Instance"
     Properties:
       ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMALINUX] # Dynamic mapping + Pseudo Parameter
       InstanceType: !FindInMap [InstanceSize, !Ref EnvironmentSize, EC2]
       SubnetId: PrivateSubnetCorp
       SecurityGroupIds:
-        - !Ref SSH-SG
+        - !Ref SSHSG
       Tags:
         - Key: Product
           Value: WordPress
@@ -527,7 +527,7 @@ Resources:
 
 
 # Databases:  probably want RDS proxy too
-  AC-WP-DB:
+  ACWPDB:
     Type: "AWS::RDS::DBInstance"
     Properties:
       AllocatedStorage: 5
@@ -539,7 +539,7 @@ Resources:
       MasterUsername: wordpress  # encrypt
       MasterUserPassword: w0rdpr355  # encrypt
       DBSecurityGroups:
-        - !Ref DB-SG
+        - !Ref DBSG
       DBSubnetGroupName: !Ref DBSubnetGroup
       Tags:
         - Key: Product
@@ -548,7 +548,7 @@ Resources:
           Value: Private Routes (AZ2)
 
 # Storage and backups:
-  AC-WP-S3:
+  ACWPS3:
     Type: "AWS::S3::Bucket"
     Properties:
       Tags:
