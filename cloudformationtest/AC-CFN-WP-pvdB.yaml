@@ -358,7 +358,7 @@ Resources:
     Type: AWS::EC2::Route
     Properties:
       RouteTableId: !Ref PrivateRouteTable
-      DestinationCidrBlock: !Ref PublicSubnetCorpCIDR
+      DestinationCidrBlock: !Ref FakeCorpPrivateSubnetCIDR
 
 
 #######################################################
@@ -395,13 +395,9 @@ Resources:
       GroupDescription: Enable access from internal sources
       VpcId: !Ref ACWPVPC
       SecurityGroupIngress:
-      - FromPort: '80'
+      - FromPort: '22'
         IpProtocol: tcp
-        ToPort: '80'
-        CidrIp: !Ref FakeCorpPrivateSubnetCIDR
-      - FromPort: '443'
-        IpProtocol: tcp
-        ToPort: '443'
+        ToPort: '22'
         CidrIp: !Ref FakeCorpPrivateSubnetCIDR
 
   DBSG:
