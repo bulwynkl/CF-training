@@ -240,21 +240,18 @@ Resources:
 
   NatGateway2:
     Type: AWS::EC2::NatGateway
-    Condition: IsProd
     Properties:
       AllocationId: !GetAtt NatGateway2EIP.AllocationId
       SubnetId: !Ref PublicSubnet2
 
   NatGateway3:
     Type: AWS::EC2::NatGateway
-    Condition: IsProd
     Properties:
       AllocationId: !GetAtt NatGateway3EIP.AllocationId
       SubnetId: !Ref PublicSubnet3
 
   NatGatewayCorp:
     Type: AWS::EC2::NatGateway
-    Condition: IsProd
     Properties:
       AllocationId: !GetAtt NatGatewayCorpEIP.AllocationId
       SubnetId: !Ref FakeCorpPublicSubnet
@@ -379,7 +376,6 @@ Resources:
 
   WebServerSG:
     Type: AWS::EC2::SecurityGroup
-    Condition: IsProd
     Properties:
       GroupDescription: Enable HTTP(s) access via port 80 & 443 from a restricted IP address
       VpcId: !Ref ACWPVPC
