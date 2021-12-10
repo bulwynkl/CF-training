@@ -1,0 +1,85 @@
+
+
+Solution Requirements:
+
+    Design and deploy a fully functioning and well-architected web application integrated with RDS, accessible via a browser
+    Use Infrastructure as Code to automate the deployment
+    Implement monitoring of the solution
+
+ 
+
+Upon receiving this email, please respond back acknowledging the following:
+
+    You can login to the account and can navigate to the specified region below
+    You have enabled MFA on your account
+    SSH access on INBOUND security groups will NOT be opened on 0.0.0.0/0 to comply with security standards (Note: that there is an automated process that deletes such security group rules)
+    OUTBOUND security groups to not be opened on 0.0.0.0/0 on ALL ports but only the required ports to comply with security standards
+    You have understood the assignment
+
+ 
+
+Instructions:
+
+    Access the AWS account used for the test with the following credentials:
+        Login URL: https://467626141371.signin.aws.amazon.com/console  
+        Username:  paul.vandenbergen
+        Password (Password will need to be changed upon the first login): CandidatePassword1!
+        Region:  Sydney (ap-southeast-2)
+        Please enable virtual MFA immediately upon login. Instructions: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_mfa_enable_virtual.html 
+
+ 
+
+    Deploy a new VPC with a public and private subnet
+    Configure a CloudFormation template to:
+        Deploy two new instances in the public subnet and install apache on both
+        Deploy a new instance in the private subnet and install WordPress on it (not Bitnami), download and unpack application, don’t install MySQL
+        Deploy a load balancer pointing to the apache
+        Take care of the traffic routing between web and app server
+        Configure security groups (allow only http and SSH access, restrict access to app server to web server)
+        Configure RDS (engine of your choice) for the WordPress Database, enable encryption
+        Configure WordPress to use the RDS database
+    Demonstrate WordPress is working via the browser (ELB endpoint)
+    Configure CloudWatch alerts for resource utilization (CPU utilization)
+    Prepare a design of the solution in https://app.diagrams.net/
+
+ 
+
+Post Completion:
+
+    Once you have completed the assignment, respond back with the following information:
+        The name of the CloudFormation stack(s) that were created
+        The VPC ID that was created
+        The WordPress Load Balancer URL that was created showing WordPress running
+
+ 
+
+Additional Notes:
+
+    You’ll have 3 days to complete the exercise, with a follow-up review of the solution – if you see that you won’t meet the deadline please do get in touch so that we can advise if an extension is available
+    Deploy the services in the above specified AWS region
+    Limit the security group INBOUND rules to your IP or a small subset of IP (avoid opening access to 0.0.0.0/0). When creating security group inbound rules for SSH access (port 22) select ‘My IP’ as the source which will automatically change the rule from 0.0.0.0/0 to your IP. If additional IPs are required, restrict it to the specific IPs and not to 0.0.0.0/0.
+    Limit the security group OUTBOUND rules to the required TCP ports only (such as 80, 8080, 81, etc). Avoid opening access to the internet on ALL ports as this does not comply with security standards.
+    In the follow-up review, which will be one hour, we will:
+        Demonstrate the active WordPress site via browser
+        Review and discuss the CloudFormation template
+        Review and discuss the services deployed
+        Review and discuss the Design of the solution
+        Review the CloudWatch monitoring and alerts
+    The account you are using has the permission to the following services:
+        rds
+        CloudWatch
+        s3
+        kms
+        CloudFormation
+        ec2
+        elasticloadbalancing
+        autoscaling
+
+ 
+
+Points of Contact:
+
+Should you have any access issues or general questions, please reach out to:
+
+    Anand Apte
+    Manoj Hunsur

@@ -1,0 +1,594 @@
+---
+Description: Cloudformation script for deploying a robust WordPress installation in AWS.
+
+Parameters:
+  EnvironmentName:
+    Description: Environment type - DEV/SYS/PRD
+    Type: String
+    Default: PRD
+    AllowedValues:
+      - DEV
+      - SYS
+      - PRD
+  Conditions:
+    IsProd: !Equals
+      - !Ref EnvironmentName
+      - PRD
+    IsSys: !Equals
+      - !Ref EnvironmentName
+      - SYS
+    IsDev: !Equals
+      - !Ref EnvironmentName
+      - DEV
+
+# Networks:
+
+  WP-VPC-CIDR:
+    Description: WP VPC IP address
+    Type: String
+    Default:
+      '!If IsProd': "10.10.0.0/16"
+      '!If IsSys': "10.11.0.0/16"
+      '!If IsDev': "10.12.0.0/16"
+
+  # subnets - 3 for prod, 2 for sys/performance, 1 for dev
+  # sys and dev public networks should not route to the public internet.
+  # public subnets
+  PublicSubnet1-CIDR:
+    Description: Public subnet IP range
+    Type: String
+    Default:
+      '!If IsProd': "10.10.0.0/24"
+      '!If IsSys': "10.11.0.0/24"
+      '!If IsDev': "10.12.0.0/24"
+
+  PublicSubnet2-CIDR:
+    Description: Public subnet IP range
+    Type: String
+    Default:
+      '!If IsProd': "10.10.1.0/24"
+      '!If IsSys': "10.11.1.0/24"
+
+  PublicSubnet3-CIDR:
+    Description: Public subnet IP range
+    Type: String
+    Default:
+      '!If IsProd': "10.10.2.0/24"
+
+  # private subnets
+  PrivateSubnet1-CIDR:
+    Description: Private subnet IP range
+    Type: String
+    Default:
+      '!If IsProd': "10.10.10.0/24"
+      '!If IsSys': "10.11.10.0/24"
+      '!If IsDev': "10.12.10.0/24"
+
+  PrivateSubnet2-CIDR:
+    Description: Private subnet IP
+    Type: String
+    Default:
+      '!If IsProd': "10.10.11.0/24"
+      '!If IsSys': "10.11.11.0/24"
+
+  PrivateSubnet3-CIDR:
+    Description: Private subnet IP
+    Type: String
+    Default:
+      '!If IsProd': "10.10.12.0/24"
+
+# Fake corporate network for internal connections
+
+  VPC-CIDR-FakeCo:
+    Description: Fake Co Pty Ltd corporate network
+    Type: String
+    Default: "10.0.0.0/16"
+
+  FakeCorpPublicSubnet-CIDR:
+    Description: Fake Co Pty Ltd internal network
+    Type: String
+    Default: "10.0.0.0/24"
+
+  FakeCorpPrivateSubnet-CIDR:
+    Description: Fake Co Pty Ltd sysadim network
+    Type: String
+    Default: "10.0.1.0/24"
+
+# My external IP address
+  TheInternetIP:
+    Description: My IP as a proxy for internet access.
+    Type: String
+    Default: "180.150.37.156/32"
+
+Resources:
+# Networks:
+  AC-WP-VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref WP-VPC-CIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: EnvironmentType
+          Value: !Ref EnvironmentName
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Condition: IsProd
+    Properties:
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: !Ref EnvironmentName
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Condition: IsProd
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref AC-WP-VPC
+
+# Public Subnet
+  PublicSubnet1:  # always created for PRD, SYS and DEV
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref AC-WP-VPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref PublicSubnet1-CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Public Subnet (AZ1)
+
+  PublicSubnet2:  #SYS and PRD, not DEV
+    Type: AWS::EC2::Subnet
+    Condition: !Not IsDev
+    Properties:
+      VpcId: !Ref AC-WP-VPC
+      AvailabilityZone: !Select [ 1, !GetAZs  '' ]
+      CidrBlock: !Ref PublicSubnet2-CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Public Subnet (AZ2)
+
+  PublicSubnet3:  # Only PRD
+    Type: AWS::EC2::Subnet
+    Condition: IsProd
+    Properties:
+      VpcId: !Ref AC-WP-VPC
+      AvailabilityZone: !Select [ 2, !GetAZs  '' ]
+      CidrBlock: !Ref PublicSubnet3-CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Public Subnet (AZ3)
+
+# Private subnets for WP app and DB
+  PrivateSubnet1:  # always created for PRD, SYS and DEV
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref AC-WP-VPC
+      AvailabilityZone: !Select [ 0, !GetAZs  '' ]
+      CidrBlock: !Ref PrivateSubnet1-CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Private Subnet (AZ1)
+
+  PrivateSubnet2:  #SYS and PRD, not DEV
+    Type: AWS::EC2::Subnet
+    Condition: !Not IsDev
+    Properties:
+      VpcId: !Ref AC-WP-VPC
+      AvailabilityZone: !Select [ 1, !GetAZs  '' ]
+      CidrBlock: !Ref PrivateSubnet2-CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Private Subnet (AZ2)
+
+  PrivateSubnet3:  # Only PRD
+    Type: AWS::EC2::Subnet
+    Condition: IsProd
+    Properties:
+      VpcId: !Ref AC-WP-VPC
+      AvailabilityZone: !Select [ 2, !GetAZs  '' ]
+      CidrBlock: !Ref PrivateSubnet2-CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Private Subnet (AZ3)
+
+# DB Subnets
+  DBSubnetGroup:
+    Type: "AWS::RDS::DBSubnetGroup"
+    Properties:
+      DBSubnetGroupDescription: Subnet for RDS
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - 'Fn::If !Not IsDev': !Ref PrivateSubnet2
+        - 'Fn::If IsPrd': !Ref PrivateSubnet3
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: !Sub ${EnvironmentName} DB subnets
+
+# External facing IP addresses for Prod only
+  NatGateway1EIP:
+    Type: AWS::EC2::EIP
+    Condition: IsProd
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+
+  NatGateway2EIP:
+    Type: AWS::EC2::EIP
+    Condition: IsProd
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+
+  NatGateway3EIP:
+    Type: AWS::EC2::EIP
+    Condition: IsProd
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+
+# NAT gateways connecting public subnet to external gateway
+  NatGateway1:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway1EIP.AllocationId
+      SubnetId: !Ref PublicSubnet
+
+  NatGateway2:
+    Type: AWS::EC2::NatGateway
+    Condition: IsProd
+    Properties:
+      AllocationId: !GetAtt NatGateway2EIP.AllocationId
+      SubnetId: !Ref PublicSubnet
+
+  NatGateway3:
+    Type: AWS::EC2::NatGateway
+    Condition: IsProd
+    Properties:
+      AllocationId: !GetAtt NatGateway3EIP.AllocationId
+      SubnetId: !Ref PublicSubnet
+
+# Public Routing
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref AC-WP-VPC
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Public Routes
+
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock:
+        - 'Fn::If IsProd': !Ref TheInternetIP
+        - 'Fn::If IsSys': !Ref VPC-CIDR-FakeCo
+        - 'Fn::If IsDev': !Ref VPC-CIDR-FakeCo
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetRouteTableAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet1
+
+  PublicSubnetRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: !Not IsDev
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet2
+
+  PublicSubnetRouteTableAssociation3:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: IsProd
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet3
+
+
+# private routes connect only to public subnets and internal subnets, not to the internet - no NAT
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref AC-WP-VPC
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Private Routes for all AZs
+
+#  adding each subnet association
+  PrivateSubnetRouteTableAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet1
+
+  PrivateSubnetRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: IsProd
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet2
+
+  PrivateSubnetRouteTableAssociation3:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: IsProd
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet3
+
+# now the routes between all the private subnet and all the public subnets
+  DefaultPrivateRoute1:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: !Ref PublicSubnet1-CIDR
+
+  DefaultPrivateRoute2:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: !Ref PublicSubnet2-CIDR
+
+  DefaultPrivateRoute3:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: !Ref PublicSubnet3-CIDR
+
+#######################################################
+
+#  this needs work
+# SG for PRD public subnet to internet = port 80/443 http/s
+# SG for SYS/DEV NO access to internet - not requried ? because no route to internet gateway.
+##    Can explicitly block all anyway
+# SG for PRD/SYS/DEV public subnet to PRD private = port 80/443 http/s
+# SG for PRD/SYS/DEV private subnet to RDS = 3306
+# SG for PRD/SYS/DEV public to management network port = 22 ssh
+# SG for SYS/DEV public to corp network port = 80/443 http/s
+# SG for masintenance subnet to RDS = 3306
+
+
+  WebServer-SG-PRD:
+    Type: AWS::EC2::SecurityGroup
+    Condition: IsProd
+    Properties:
+      GroupDescription: Enable HTTP(s) access via port 80 & 443 from a restricted IP address
+      VpcId: !Ref AC-WP-VPC
+      SecurityGroupIngress:
+      - FromPort: '80'
+        IpProtocol: tcp
+        ToPort: '80'
+        CidrIp: !Ref TheInternetIP
+      - FromPort: '443'
+        IpProtocol: tcp
+        ToPort: '443'
+        CidrIp: !Ref TheInternetIP
+
+  WebServer-SG-Non-PRD:
+    Type: AWS::EC2::SecurityGroup
+    Condition: !Not IsProd
+    Properties:
+      GroupDescription: Enable access from internal sources
+      VpcId: !Ref AC-WP-VPC
+      SecurityGroupIngress:
+      - FromPort: '80'
+        IpProtocol: tcp
+        ToPort: '80'
+        CidrIp: !Ref VPC-CIDR-FakeCo
+      - FromPort: '443'
+        IpProtocol: tcp
+        ToPort: '443'
+        CidrIp: !Ref VPC-CIDR-FakeCo
+
+  SSH-SG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable access from internal sources
+      VpcId: !Ref AC-WP-VPC
+      SecurityGroupIngress:
+      - FromPort: '80'
+        IpProtocol: tcp
+        ToPort: '80'
+        CidrIp: !Ref FakeCorpPrivateSubnet-CIDR
+      - FromPort: '443'
+        IpProtocol: tcp
+        ToPort: '443'
+        CidrIp: !Ref VFakeCorpPrivateSubnet-CIDR
+
+  DB-SG:
+    Type: AWS::RDS::DBSecurityGroup
+    Properties:
+      GroupDescription: Allow DB access from private networks
+      EC2VpcId: !Ref AC-WP-VPC
+      DBSecurityGroupIngress:
+        - FromPort: '3306'
+        - IpProtocol: tcp
+        - ToPort: '3306'
+        - CIDRIP: '!Ref '
+
+
+# EC2 instances:
+# Frontend
+  AC-WP-webserver1:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMALINUX] # Dynamic mapping + Pseudo Parameter
+      InstanceType: !FindInMap [InstanceSize, !Ref EnvironmentSize, EC2]
+      SubnetId: PublicSubnet1
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: !Sub ${EnvironmentName} frontend EC2 (AZ1)
+
+  AC-WP-webserver2:
+    Type: "AWS::EC2::Instance"
+    Condition: !Not IsDev
+    Properties:
+      ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMALINUX] # Dynamic mapping + Pseudo Parameter
+      InstanceType: !FindInMap [InstanceSize, !Ref EnvironmentSize, EC2]
+      SubnetId: PublicSubnet2
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: !Sub ${EnvironmentName} frontend EC2 (AZ2)
+
+  AC-WP-webserver3:
+    Type: "AWS::EC2::Instance"
+    Condition: IsProd
+    Properties:
+      ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMALINUX] # Dynamic mapping + Pseudo Parameter
+      InstanceType: !FindInMap [InstanceSize, !Ref EnvironmentSize, EC2]
+      SubnetId: PublicSubnet3
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: !Sub ${EnvironmentName} frontend EC2 (AZ3)
+
+# Backend
+  AC-WP-app1:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMALINUX] # Dynamic mapping + Pseudo Parameter
+      InstanceType: !FindInMap [InstanceSize, !Ref EnvironmentSize, EC2]
+      SubnetId: PrivateSubnet1
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: !Sub ${EnvironmentName} WP app (AZ1)
+
+  AC-WP-app2:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMALINUX] # Dynamic mapping + Pseudo Parameter
+      InstanceType: !FindInMap [InstanceSize, !Ref EnvironmentSize, EC2]
+      SubnetId: PrivateSubnet2
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: !Sub ${EnvironmentName} WP app (AZ2)
+
+  AC-WP-app3:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMALINUX] # Dynamic mapping + Pseudo Parameter
+      InstanceType: !FindInMap [InstanceSize, !Ref EnvironmentSize, EC2]
+      SubnetId: PrivateSubnet3
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: !Sub ${EnvironmentName} WP app (AZ3)
+
+# Databases:  probably want RDS proxy too
+  AC-WP-DB:
+    Type: "AWS::RDS::DBInstance"
+    Properties:
+      AllocatedStorage: 5
+      StorageType: gp2
+      DBInstanceClass: !FindInMap [InstanceSize, !Ref EnvironmentSize, DB] # Dynamic mapping + Pseudo Parameter
+      SubnetId: DBSubnet
+      DBName: wordpress
+      Engine: MySQL
+      MasterUsername: wordpress  # encrypt
+      MasterUserPassword: w0rdpr355  # encrypt
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Private Routes (AZ2)
+
+# Storage and backups:
+  AC-WP-S3:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Private Routes (AZ2)
+
+# Monitoring:
+
+
+
+Outputs:
+  VPC:
+    Description: A reference to the created VPC
+    Value: !Ref AC-WP-VPC
+
+  PublicSubnets:
+    Description: A list of the public subnets
+    Value: !Join [ ",", [ !Ref PublicSubnet, !Ref PublicSubnet, !Ref PublicSubnet ]]
+
+  PrivateSubnets:
+    Description: A list of the private subnets
+    Value: !Join [ ",", [ !Ref PrivateSubnet, !Ref PrivateSubnet, !Ref PrivateSubnet ]]
+
+  PublicSubnet1:
+    Description: A reference to the public subnet in the 1st Availability Zone
+    Value: !Ref PublicSubnet
+
+  PublicSubnet2:
+    Description: A reference to the public subnet in the 2nd Availability Zone
+    Value: !Ref PublicSubnet
+
+  PublicSubnet3:
+    Description: A reference to the public subnet in the 2nd Availability Zone
+    Value: !Ref PublicSubnet
+
+  PrivateSubnet1:
+    Description: A reference to the private subnet in the 1st Availability Zone
+    Value: !Ref PrivateSubnet
+
+  PrivateSubnet2:
+    Description: A reference to the private subnet in the 2nd Availability Zone
+    Value: !Ref PrivateSubnet
+
+  PrivateSubnet3:
+    Description: A reference to the private subnet in the 2nd Availability Zone
+    Value: !Ref PrivateSubnet
+
+  # NoIngressSecurityGroup:
+  #   Description: Security group with no ingress rule
+  #   Value: !Ref NoIngressSecurityGroup
+
+  TheInternetIP:
+    Description: Your internet address you wish to connect from
+    Value: !Ref TheInternetIP
