@@ -90,7 +90,7 @@ Resources:
   ACWPVPC:
     Type: AWS::EC2::VPC
     Properties:
-      CidrBlock: Fn::Ref WPVPCCIDR
+      CidrBlock: !Ref WPVPCCIDR
       EnableDnsHostnames: true
       EnableDnsSupport: true
       Tags:
@@ -424,15 +424,18 @@ Resources:
         CidrIp: !Ref PrivateSubnetCorpCIDR
 
   DBSG:
-    Type: AWS::RDS::DBSecurityGroup
+    Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Allow DB access from private networks
-      EC2VpcId: !Ref ACWPVPC
-      DBSecurityGroupIngress:
+      VpcId: !Ref ACWPVPC
+      SecurityGroupIngress:
         - FromPort: '3306'
         - IpProtocol: tcp
         - ToPort: '3306'
-        - CIDRIP: '!Ref '
+        - CIDRIP:
+          - '!Ref PrivateSubnet1CIDR'
+          - '!Ref PrivateSubnet2CIDR'
+          - '!Ref PrivateSubnet3CIDR'
 
   # EC2 instances:
   # Frontend
@@ -561,14 +564,14 @@ Resources:
           Value: Private Routes (AZ2)
 
   # Storage and backups:
-  ACWPS3:
-    Type: "AWS::S3::Bucket"
-    Properties:
-      Tags:
-        - Key: Product
-          Value: WordPress
-        - Key: Network
-          Value: bucket!
+  # ACWPS3:
+  #   Type: "AWS::S3::Bucket"
+  #   Properties:
+  #     Tags:
+  #       - Key: Product
+  #         Value: WordPress
+  #       - Key: Network
+  #         Value: bucket!
 
   # Monitoring:
 
