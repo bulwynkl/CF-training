@@ -1,0 +1,61 @@
+  
+  # Mappings
+Mappings:
+  RegionMap:
+    ap-southeast-2:  # Sydney
+      AMALINUX: ami-01dc883c13e87eeda
+
+  InstanceSize:
+    SMALL:
+      "EC2" : "t2.micro"
+    #  "DB" : "db.t2.micro"
+    # MEDIUM:
+    #   "EC2" : "t2.small"
+    #   "DB" : "db.t2.small"
+    # LARGE:
+    #   "EC2" : "t2.medium"
+    #   "DB" : "db.t2.medium"
+
+Parameters:
+  # sizing and EC2 parameters
+  EnvironmentSize:
+    Type: String
+    Default: SMALL
+    AllowedValues:
+      - SMALL
+      - MEDIUM
+      - LARGE
+    Description: Select Environment Size (S,M,L)
+
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access into the server
+    Type: AWS::EC2::KeyPair::KeyName
+
+
+Resources:
+  # EC2 instances:
+  # Frontend - apache
+  ACWPwebserver1:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMALINUX] # Dynamic mapping + Pseudo Parameter
+      InstanceType: !FindInMap [InstanceSize, !Ref EnvironmentSize, EC2]
+      # SubnetId: PublicSubnet1
+      KeyName: !Ref KeyName
+      SecurityGroupIds:
+        # - !Ref SSHSG
+        - !Ref WebServerSG
+      Tags:
+        - Key: Product
+          Value: Apache
+        - Key: Network
+          Value: frontend EC2 (AZ1)
+
+  WebServerSG:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Front End Security Group - initally SSH, later HTTPS only
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22

@@ -1,0 +1,621 @@
+---
+Description: Cloudformation script for deploying a robust WordPress installation in AWS.
+
+# Mappings
+Mappings:
+  RegionMap:
+    ap-southeast-2:  # Sydney
+      AMALINUX: ami-0bd2230cfb28832f7
+
+  InstanceSize:
+    SMALL:
+      "EC2" : "t2.micro"
+      "DB" : "db.t2.micro"
+    MEDIUM:
+      "EC2" : "t2.small"
+      "DB" : "db.t2.small"
+    LARGE:
+      "EC2" : "t2.medium"
+      "DB" : "db.t2.medium"
+
+Parameters:
+  # sizing and EC2 parameters
+  EnvironmentSize:
+    Type: String
+    Default: LARGE
+    AllowedValues:
+      - SMALL
+      - MEDIUM
+      - LARGE
+    Description: Select Environment Size (S,M,L)
+
+  # Networks:
+  WPVPCCIDR:
+    Description: WP VPC IP address
+    Type: String
+    Default: "10.10.0.0/16"
+
+  # Public Subnets
+  PublicSubnet1CIDR:
+    Description: Public subnet IP range
+    Type: String
+    Default: "10.10.0.0/24"
+
+  PublicSubnet2CIDR:
+    Description: Public subnet IP range
+    Type: String
+    Default: "10.10.1.0/24"
+
+  PublicSubnet3CIDR:
+    Description: Public subnet IP range
+    Type: String
+    Default: "10.10.2.0/24"
+
+  # Private subnets
+  PrivateSubnet1CIDR:
+    Description: Private subnet IP range
+    Type: String
+    Default: "10.10.10.0/24"
+
+  PrivateSubnet2CIDR:
+    Description: Private subnet IP
+    Type: String
+    Default: "10.10.11.0/24"
+
+  PrivateSubnet3CIDR:
+    Description: Private subnet IP
+    Type: String
+    Default: "10.10.12.0/24"
+
+  # Fake corporate network for internal connections
+
+  PublicSubnetCorpCIDR:
+    Description: Fake Co Pty Ltd internal network
+    Type: String
+    Default: "10.10.20.0/24"
+
+  PrivateSubnetCorpCIDR:
+    Description: Fake Co Pty Ltd sysadim network
+    Type: String
+    Default: "10.10.21.0/24"
+
+  # My external IP address
+  TheInternetIP:
+    Description: My IP as a proxy for internet access.
+    Type: String
+    Default: "180.150.37.156/32"
+
+Resources:
+  # Networks:
+  ACWPVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref WPVPCCIDR
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Product
+          Value: WordPress
+
+  WPInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Product
+          Value: WordPress
+
+
+  WPInternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref WPInternetGateway
+      VpcId: !Ref ACWPVPC
+
+  # Public Subnet for web server
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref ACWPVPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref PublicSubnet1CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Network
+          Value: Public Subnet (AZ1)
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref ACWPVPC
+      AvailabilityZone: !Select [ 1, !GetAZs  '' ]
+      CidrBlock: !Ref PublicSubnet2CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Network
+          Value: Public Subnet (AZ2)
+
+  PublicSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref ACWPVPC
+      AvailabilityZone: !Select [ 2, !GetAZs  '' ]
+      CidrBlock: !Ref PublicSubnet3CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Network
+          Value: Public Subnet (AZ3)
+
+  PublicSubnetCorp:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref ACWPVPC
+      AvailabilityZone: !Select [ 2, !GetAZs  '' ]
+      CidrBlock: !Ref PublicSubnetCorpCIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Network
+          Value: Public Subnet (AZ3)
+
+  # Private subnets for WP app
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref ACWPVPC
+      AvailabilityZone: !Select [ 0, !GetAZs  '' ]
+      CidrBlock: !Ref PrivateSubnet1CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Network
+          Value: Private Subnet (AZ1)
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref ACWPVPC
+      AvailabilityZone: !Select [ 1, !GetAZs  '' ]
+      CidrBlock: !Ref PrivateSubnet2CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Network
+          Value: Private Subnet (AZ2)
+
+  PrivateSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref ACWPVPC
+      AvailabilityZone: !Select [ 2, !GetAZs  '' ]
+      CidrBlock: !Ref PrivateSubnet3CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Network
+          Value: Private Subnet (AZ3)
+
+  PrivateSubnetCorp:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref ACWPVPC
+      AvailabilityZone: !Select [ 2, !GetAZs  '' ]
+      CidrBlock: !Ref PrivateSubnetCorpCIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Network
+          Value: Private CORP Subnet (AZ3)
+
+  # DB Subnets
+  DBSubnetGroup:
+    Type: "AWS::RDS::DBSubnetGroup"
+    Properties:
+      DBSubnetGroupDescription: Subnet for RDS
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Network
+          Value: DB subnet
+
+  # External facing IP addresses for Prod only
+  NatGateway1EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: WPInternetGatewayAttachment
+    Properties:
+      Domain: vpc
+
+  NatGateway2EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: WPInternetGatewayAttachment
+    Properties:
+      Domain: vpc
+
+  NatGateway3EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: WPInternetGatewayAttachment
+    Properties:
+      Domain: vpc
+
+  NatGatewayCorpEIP:
+    Type: AWS::EC2::EIP
+    DependsOn: WPInternetGatewayAttachment
+    Properties:
+      Domain: vpc
+
+  # NAT gateways connecting public subnet to external gateway
+  NatGateway1:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway1EIP.AllocationId
+      SubnetId: !Ref PublicSubnet1
+
+  NatGateway2:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway2EIP.AllocationId
+      SubnetId: !Ref PublicSubnet2
+
+  NatGateway3:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway3EIP.AllocationId
+      SubnetId: !Ref PublicSubnet3
+
+  NatGatewayCorp:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGatewayCorpEIP.AllocationId
+      SubnetId: !Ref PublicSubnetCorp
+
+  # Public Routing
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref ACWPVPC
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Network
+          Value: Public Routes
+
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: WPInternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: !Ref TheInternetIP
+      GatewayId: !Ref WPInternetGateway
+
+  PublicSubnetRouteTableAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet1
+
+  PublicSubnetRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet2
+
+  PublicSubnetRouteTableAssociation3:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet3
+
+  PublicSubnetRouteTableAssociationCorp:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnetCorp
+
+  # Private routes connect only to public subnets and internal subnets, not to the internet - no NAT
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref ACWPVPC
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Network
+          Value: Private Routes for all AZs
+
+  # Subnet Associations
+  PrivateSubnetRouteTableAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet1
+
+  PrivateSubnetRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet2
+
+  PrivateSubnetRouteTableAssociation3:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet3
+
+  PrivateSubnetRouteTableAssociationCorp:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnetCorp
+
+  # Routes between all the private subnet and all the public subnets
+  DefaultPrivateRoute1:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: !Ref PublicSubnet1CIDR
+
+  DefaultPrivateRoute2:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: !Ref PublicSubnet2CIDR
+
+  DefaultPrivateRoute3:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: !Ref PublicSubnet3CIDR
+
+  DefaultPrivateRouteCorp:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: !Ref PrivateSubnetCorpCIDR
+
+  #######################################################
+
+  #  this needs work
+  # SG for PRD public subnet to internet = port 80/443 http/s
+  # SG for SYS/DEV NO access to internet - not requried ? because no route to internet gateway.
+  ##    Can explicitly block all anyway
+  # SG for PRD/SYS/DEV public subnet to PRD private = port 80/443 http/s
+  # SG for PRD/SYS/DEV private subnet to RDS = 3306
+  # SG for PRD/SYS/DEV public to management network port = 22 ssh
+  # SG for SYS/DEV public to corp network port = 80/443 http/s
+  # SG for masintenance subnet to RDS = 3306
+  WebServerSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable HTTP(s) access via port 80 & 443 from a restricted IP address
+      VpcId: !Ref ACWPVPC
+      SecurityGroupIngress:
+      - FromPort: '80'
+        IpProtocol: tcp
+        ToPort: '80'
+        CidrIp: !Ref TheInternetIP
+      - FromPort: '443'
+        IpProtocol: tcp
+        ToPort: '443'
+        CidrIp: !Ref TheInternetIP
+
+  SSHSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable access from internal sources
+      VpcId: !Ref ACWPVPC
+      SecurityGroupIngress:
+      - FromPort: '22'
+        IpProtocol: tcp
+        ToPort: '22'
+        CidrIp: !Ref PrivateSubnetCorpCIDR
+
+  DBSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow DB access from private networks
+      VpcId: !Ref ACWPVPC
+      SecurityGroupIngress:
+        - FromPort: '3306'
+        - IpProtocol: tcp
+        - ToPort: '3306'
+        - CIDRIP:
+          - '!Ref PrivateSubnet1CIDR'
+          - '!Ref PrivateSubnet2CIDR'
+          - '!Ref PrivateSubnet3CIDR'
+
+  # EC2 instances:
+  # Frontend
+  ACWPwebserver1:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMALINUX] # Dynamic mapping + Pseudo Parameter
+      InstanceType: !FindInMap [InstanceSize, !Ref EnvironmentSize, EC2]
+      SubnetId: PublicSubnet1
+      SecurityGroupIds:
+        - !Ref SSHSG
+        - !Ref WebServerSG
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Network
+          Value: frontend EC2 (AZ1)
+
+  ACWPwebserver2:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMALINUX] # Dynamic mapping + Pseudo Parameter
+      InstanceType: !FindInMap [InstanceSize, !Ref EnvironmentSize, EC2]
+      SubnetId: PublicSubnet2
+      SecurityGroupIds:
+        - !Ref SSHSG
+        - !Ref WebServerSG
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Network
+          Value: frontend EC2 (AZ2)
+
+  ACWPwebserver3:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMALINUX] # Dynamic mapping + Pseudo Parameter
+      InstanceType: !FindInMap [InstanceSize, !Ref EnvironmentSize, EC2]
+      SubnetId: PublicSubnet3
+      SecurityGroupIds:
+        - !Ref SSHSG
+        - !Ref WebServerSG
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Network
+          Value: frontend EC2 (AZ3)
+
+  # Backend
+  ACWPapp1:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMALINUX] # Dynamic mapping + Pseudo Parameter
+      InstanceType: !FindInMap [InstanceSize, !Ref EnvironmentSize, EC2]
+      SubnetId: PrivateSubnet1
+      SecurityGroupIds:
+        - !Ref SSHSG
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Network
+          Value: WP app (AZ1)
+
+  ACWPapp2:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMALINUX] # Dynamic mapping + Pseudo Parameter
+      InstanceType: !FindInMap [InstanceSize, !Ref EnvironmentSize, EC2]
+      SubnetId: PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref SSHSG
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Network
+          Value: WP app (AZ2)
+
+  ACWPapp3:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMALINUX] # Dynamic mapping + Pseudo Parameter
+      InstanceType: !FindInMap [InstanceSize, !Ref EnvironmentSize, EC2]
+      SubnetId: PrivateSubnet3
+      SecurityGroupIds:
+        - !Ref SSHSG
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Network
+          Value: WP app (AZ3)
+
+  # Corp
+  ACJumpCorp:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMALINUX] # Dynamic mapping + Pseudo Parameter
+      InstanceType: !FindInMap [InstanceSize, !Ref EnvironmentSize, EC2]
+      SubnetId: PrivateSubnetCorp
+      SecurityGroupIds:
+        - !Ref SSHSG
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Network
+          Value: Jumpbox (AZ3)
+
+  # Databases:  probably want RDS proxy too
+  ACWPDB:
+    Type: "AWS::RDS::DBInstance"
+    Properties:
+      AllocatedStorage: 5
+      StorageType: gp2
+      DBInstanceClass: !FindInMap [InstanceSize, !Ref EnvironmentSize, DB] # Dynamic mapping + Pseudo Parameter
+      SubnetId: DBSubnet
+      DBNetwork: wordpress
+      Engine: MySQL
+      MasterUserNetwork: wordpress  # encrypt
+      MasterUserPassword: w0rdpr355  # encrypt
+      DBSecurityGroups:
+        - !Ref DBSG
+      DBSubnetGroupNetwork: !Ref DBSubnetGroup
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Network
+          Value: Private Routes (AZ2)
+
+  # Storage and backups:
+  # ACWPS3:
+  #   Type: "AWS::S3::Bucket"
+  #   Properties:
+  #     Tags:
+  #       - Key: Product
+  #         Value: WordPress
+  #       - Key: Network
+  #         Value: bucket!
+
+  # Monitoring:
+
+# Outputs:
+#   VPC:
+#     Description: A reference to the created VPC
+#     Value: !Ref ACWPVPC
+
+#   PublicSubnets:
+#     Description: A list of the public subnets
+#     Value: !Join [ ",", [ !Ref PublicSubnet, !Ref PublicSubnet, !Ref PublicSubnet ]]
+
+#   PrivateSubnets:
+#     Description: A list of the private subnets
+#     Value: !Join [ ",", [ !Ref PrivateSubnet, !Ref PrivateSubnet, !Ref PrivateSubnet ]]
+
+#   PublicSubnet1:
+#     Description: A reference to the public subnet in the 1st Availability Zone
+#     Value: !Ref PublicSubnet
+
+#   PublicSubnet2:
+#     Description: A reference to the public subnet in the 2nd Availability Zone
+#     Value: !Ref PublicSubnet
+
+#   PublicSubnet3:
+#     Description: A reference to the public subnet in the 2nd Availability Zone
+#     Value: !Ref PublicSubnet
+
+#   PrivateSubnet1:
+#     Description: A reference to the private subnet in the 1st Availability Zone
+#     Value: !Ref PrivateSubnet
+
+#   PrivateSubnet2:
+#     Description: A reference to the private subnet in the 2nd Availability Zone
+#     Value: !Ref PrivateSubnet
+
+#   PrivateSubnet3:
+#     Description: A reference to the private subnet in the 2nd Availability Zone
+#     Value: !Ref PrivateSubnet
+
+#   # NoIngressSecurityGroup:
+#   #   Description: Security group with no ingress rule
+#   #   Value: !Ref NoIngressSecurityGroup
+
+#   TheInternetIP:
+#     Description: Your internet address you wish to connect from
+#     Value: !Ref TheInternetIP
