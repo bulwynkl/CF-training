@@ -71,7 +71,6 @@ Resources:
           !Sub |
             #!/bin/bash -xe
             # Ensure AWS CFN Bootstrap is the latest
-            yum update -y
             yum install -y aws-cfn-bootstrap
             # Install the files and packages from the metadata
             /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource ACWPwebserver1  --region ${AWS::Region}
@@ -89,3 +88,9 @@ Resources:
           FromPort: 80
           ToPort: 80
           CidrIp: 180.150.37.156/32
+
+
+Outputs:
+  Website:
+    Description: The Public DNS for the EC2 Instance
+    Value: !Sub 'http://${EC2Instance.PublicDnsName}'
