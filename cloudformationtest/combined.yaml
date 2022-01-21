@@ -129,11 +129,7 @@ Resources:
     Properties:
       InternetGatewayId: !Ref WPInternetGateway
       VpcId: !Ref ACWPVPC
-      Tags:
-        - Key: Product
-          Value: WordPress
-        - Key: Name
-          Value: AC WP IGA
+
 
   # Public Subnet for web server
   PublicSubnet1:
@@ -272,33 +268,18 @@ Resources:
     Properties:
       RouteTableId: !Ref PublicRouteTable
       SubnetId: !Ref PublicSubnet1
-      Tags:
-        - Key: Product
-          Value: WordPress
-        - Key: Name
-          Value: AC WP Public Route Subnet1
 
   PublicSubnetRouteTableAssociation2:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId: !Ref PublicRouteTable
       SubnetId: !Ref PublicSubnet2
-      Tags:
-        - Key: Product
-          Value: WordPress
-        - Key: Name
-          Value: AC WP Public Route Subnet2
 
   PublicSubnetRouteTableAssociation3:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId: !Ref PublicRouteTable
       SubnetId: !Ref PublicSubnet3
-      Tags:
-        - Key: Product
-          Value: WordPress
-        - Key: Name
-          Value: AC WP Public Route Subnet3
 
 
   # EC2 instances:
@@ -315,14 +296,14 @@ Resources:
           files:
             /var/www/html/index.php:
               content: !Sub |
-                <?php print "Hello world"; ?>
+                <?php print "Hello world1"; ?>
           services:
             sysvinit:
               httpd:
                 enabled: true
                 ensureRunning: true
     Properties:
-      AvailabilityZone: 
+      SubnetId: !Ref PublicSubnet1
       ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMALINUX] # Dynamic mapping + Pseudo Parameter
       InstanceType: !FindInMap [InstanceSize, !Ref EnvironmentSize, EC2]
       # SubnetId: PublicSubnet1
@@ -343,6 +324,87 @@ Resources:
             yum install -y aws-cfn-bootstrap
             # Install the files and packages from the metadata
             /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource ACWPwebserver1  --region ${AWS::Region}
+  ACWPwebserver2:
+    Type: "AWS::EC2::Instance"
+    Metadata:
+      AWS::CloudFormation::Init:
+        config:
+          packages:
+            yum:
+              httpd: []
+              php: []
+          files:
+            /var/www/html/index.php:
+              content: !Sub |
+                <?php print "Hello world2"; ?>
+          services:
+            sysvinit:
+              httpd:
+                enabled: true
+                ensureRunning: true
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMALINUX] # Dynamic mapping + Pseudo Parameter
+      InstanceType: !FindInMap [InstanceSize, !Ref EnvironmentSize, EC2]
+      # SubnetId: PublicSubnet1
+      KeyName: !Ref KeyName
+      SecurityGroupIds:
+        # - !Ref SSHSG
+        - !Ref WebServerSG
+      Tags:
+        - Key: Product
+          Value: Apache
+        - Key: Network
+          Value: frontend EC2 (AZ2)
+      UserData:
+        'Fn::Base64':
+          !Sub |
+            #!/bin/bash -xe
+            # Ensure AWS CFN Bootstrap is the latest
+            yum install -y aws-cfn-bootstrap
+            # Install the files and packages from the metadata
+            /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource ACWPwebserver2  --region ${AWS::Region}
+
+  ACWPwebserver3:
+    Type: "AWS::EC2::Instance"
+    Metadata:
+      AWS::CloudFormation::Init:
+        config:
+          packages:
+            yum:
+              httpd: []
+              php: []
+          files:
+            /var/www/html/index.php:
+              content: !Sub |
+                <?php print "Hello world3"; ?>
+          services:
+            sysvinit:
+              httpd:
+                enabled: true
+                ensureRunning: true
+    Properties:
+      SubnetId: !Ref PublicSubnet3
+      ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMALINUX] # Dynamic mapping + Pseudo Parameter
+      InstanceType: !FindInMap [InstanceSize, !Ref EnvironmentSize, EC2]
+      # SubnetId: PublicSubnet1
+      KeyName: !Ref KeyName
+      SecurityGroupIds:
+        # - !Ref SSHSG
+        - !Ref WebServerSG
+      Tags:
+        - Key: Product
+          Value: Apache
+        - Key: Network
+          Value: frontend EC2 (AZ3)
+      UserData:
+        'Fn::Base64':
+          !Sub |
+            #!/bin/bash -xe
+            # Ensure AWS CFN Bootstrap is the latest
+            yum install -y aws-cfn-bootstrap
+            # Install the files and packages from the metadata
+            /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource ACWPwebserver3  --region ${AWS::Region}
 
   WebServerSG:
     Type: 'AWS::EC2::SecurityGroup'
@@ -357,9 +419,19 @@ Resources:
           FromPort: 80
           ToPort: 80
           CidrIp: 180.150.37.156/32
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 180.150.37.156/32
 
 
 Outputs:
-  Website:
-    Description: The Public DNS for the EC2 Instance
+  WebsiteAZ1: 
+    Description: The Public DNS for the EC2 Instance on AZ1
     Value: !Sub 'http://${ACWPwebserver1.PublicDnsName}'
+  WebsiteAZ2:
+    Description: The Public DNS for the EC2 Instance on AZ2
+    Value: !Sub 'http://${ACWPwebserver2.PublicDnsName}'
+  WebsiteAZ3:
+    Description: The Public DNS for the EC2 Instance on AZ3
+    Value: !Sub 'http://${ACWPwebserver3.PublicDnsName}'
