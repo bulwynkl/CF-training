@@ -76,7 +76,6 @@ Resources:
             # Install the files and packages from the metadata
             /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource EC2Instance  --region ${AWS::Region}
 
-
   WebServerSG:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
