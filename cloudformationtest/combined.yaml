@@ -1,0 +1,365 @@
+---
+Description: VPC, subnets, networking, VMs
+
+
+
+
+
+
+Mappings:
+  RegionMap:
+    ap-southeast-2:  # Sydney
+      AMALINUX: ami-01dc883c13e87eeda
+
+  InstanceSize:
+    SMALL:
+      "EC2" : "t2.micro"
+    #  "DB" : "db.t2.micro"
+    # MEDIUM:
+    #   "EC2" : "t2.small"
+    #   "DB" : "db.t2.small"
+    # LARGE:
+    #   "EC2" : "t2.medium"
+    #   "DB" : "db.t2.medium"
+
+
+
+
+
+
+
+
+
+
+Parameters:
+  NameOfService:
+    Description: "The name of the service this stack is to be used for."
+    Type: String
+
+  # sizing and EC2 parameters
+  EnvironmentSize:
+    Description: Select Environment Size (S,M,L)
+    Type: String
+    Default: SMALL
+    AllowedValues:
+      - SMALL
+      - MEDIUM
+      - LARGE
+
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access into the server
+    Type: AWS::EC2::KeyPair::KeyName
+
+  # Networks:
+  WPVPCCIDR:
+    Description: WP VPC IP address
+    Type: String
+    Default: "10.10.0.0/16"
+
+  # Public Subnets
+  PublicSubnet1CIDR:
+    Description: Public subnet IP range
+    Type: String
+    Default: "10.10.0.0/24"
+
+  PublicSubnet2CIDR:
+    Description: Public subnet IP range
+    Type: String
+    Default: "10.10.1.0/24"
+
+  PublicSubnet3CIDR:
+    Description: Public subnet IP range
+    Type: String
+    Default: "10.10.2.0/24"
+
+  # # Private subnets
+  # PrivateSubnet1CIDR:
+  #   Description: Private subnet IP range
+  #   Type: String
+  #   Default: "10.10.10.0/24"
+
+  # PrivateSubnet2CIDR:
+  #   Description: Private subnet IP
+  #   Type: String
+  #   Default: "10.10.11.0/24"
+
+  # PrivateSubnet3CIDR:
+  #   Description: Private subnet IP
+  #   Type: String
+  #   Default: "10.10.12.0/24"
+
+  # My external IP address
+  TheInternetIP:
+    Description: My IP as a proxy for internet access.
+    Type: String
+    Default: "180.150.37.156/32"
+
+
+
+
+
+
+
+
+Resources:
+  # Networks:
+  ACWPVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref WPVPCCIDR
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: AC WP VPC
+
+  WPInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: AC WP IG
+
+  WPInternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref WPInternetGateway
+      VpcId: !Ref ACWPVPC
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: AC WP IGA
+
+  # Public Subnet for web server
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref ACWPVPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref PublicSubnet1CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: Public Subnet (AZ1)
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref ACWPVPC
+      AvailabilityZone: !Select [ 1, !GetAZs  '' ]
+      CidrBlock: !Ref PublicSubnet2CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: Public Subnet (AZ2)
+
+  PublicSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref ACWPVPC
+      AvailabilityZone: !Select [ 2, !GetAZs  '' ]
+      CidrBlock: !Ref PublicSubnet3CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: Public Subnet (AZ3)
+
+  # External facing IP addresses for Prod only
+  NatGateway1EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: WPInternetGatewayAttachment
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: AC WP NATGW1
+
+  NatGateway2EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: WPInternetGatewayAttachment
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: AC WP NATGW2
+
+  NatGateway3EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: WPInternetGatewayAttachment
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: AC WP NATGW3
+
+  # NAT gateways connecting public subnet to external gateway
+  NatGateway1:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway1EIP.AllocationId
+      SubnetId: !Ref PublicSubnet1
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: AC WP NATGW1
+
+  NatGateway2:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway2EIP.AllocationId
+      SubnetId: !Ref PublicSubnet2
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: AC WP NATGW2
+
+  NatGateway3:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway3EIP.AllocationId
+      SubnetId: !Ref PublicSubnet3
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: AC WP NATGW3
+
+  # Public Routing
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref ACWPVPC
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: AC WP Public Route Table
+
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: WPInternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: !Ref TheInternetIP
+      GatewayId: !Ref WPInternetGateway
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: AC WP Default Public Route
+
+  PublicSubnetRouteTableAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet1
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: AC WP Public Route Subnet1
+
+  PublicSubnetRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet2
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: AC WP Public Route Subnet2
+
+  PublicSubnetRouteTableAssociation3:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet3
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: AC WP Public Route Subnet3
+
+
+  # EC2 instances:
+  # Frontend - apache
+  ACWPwebserver1:
+    Type: "AWS::EC2::Instance"
+    Metadata:
+      AWS::CloudFormation::Init:
+        config:
+          packages:
+            yum:
+              httpd: []
+              php: []
+          files:
+            /var/www/html/index.php:
+              content: !Sub |
+                <?php print "Hello world"; ?>
+          services:
+            sysvinit:
+              httpd:
+                enabled: true
+                ensureRunning: true
+    Properties:
+      AvailabilityZone: 
+      ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMALINUX] # Dynamic mapping + Pseudo Parameter
+      InstanceType: !FindInMap [InstanceSize, !Ref EnvironmentSize, EC2]
+      # SubnetId: PublicSubnet1
+      KeyName: !Ref KeyName
+      SecurityGroupIds:
+        # - !Ref SSHSG
+        - !Ref WebServerSG
+      Tags:
+        - Key: Product
+          Value: Apache
+        - Key: Network
+          Value: frontend EC2 (AZ1)
+      UserData:
+        'Fn::Base64':
+          !Sub |
+            #!/bin/bash -xe
+            # Ensure AWS CFN Bootstrap is the latest
+            yum install -y aws-cfn-bootstrap
+            # Install the files and packages from the metadata
+            /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource ACWPwebserver1  --region ${AWS::Region}
+
+  WebServerSG:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Front End Security Group - initally SSH, later HTTPS only
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 180.150.37.156/32
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 180.150.37.156/32
+
+
+Outputs:
+  Website:
+    Description: The Public DNS for the EC2 Instance
+    Value: !Sub 'http://${ACWPwebserver1.PublicDnsName}'
