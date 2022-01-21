@@ -1,0 +1,252 @@
+---
+Description: VPC and subbnet configurations
+
+Parameters:
+ # Networks:
+  WPVPCCIDR:
+    Description: WP VPC IP address
+    Type: String
+    Default: "10.10.0.0/16"
+
+  # Public Subnets
+  PublicSubnet1CIDR:
+    Description: Public subnet IP range
+    Type: String
+    Default: "10.10.0.0/24"
+
+  PublicSubnet2CIDR:
+    Description: Public subnet IP range
+    Type: String
+    Default: "10.10.1.0/24"
+
+  PublicSubnet3CIDR:
+    Description: Public subnet IP range
+    Type: String
+    Default: "10.10.2.0/24"
+
+  # # Private subnets
+  # PrivateSubnet1CIDR:
+  #   Description: Private subnet IP range
+  #   Type: String
+  #   Default: "10.10.10.0/24"
+
+  # PrivateSubnet2CIDR:
+  #   Description: Private subnet IP
+  #   Type: String
+  #   Default: "10.10.11.0/24"
+
+  # PrivateSubnet3CIDR:
+  #   Description: Private subnet IP
+  #   Type: String
+  #   Default: "10.10.12.0/24"
+
+  # My external IP address
+  TheInternetIP:
+    Description: My IP as a proxy for internet access.
+    Type: String
+    Default: "180.150.37.156/32"
+
+
+Resources:
+  # Networks:
+  ACWPVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref WPVPCCIDR
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: AC WP VPC
+
+  WPInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: AC WP IG
+
+
+  WPInternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref WPInternetGateway
+      VpcId: !Ref ACWPVPC
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: AC WP IGA
+
+  # Public Subnet for web server
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref ACWPVPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref PublicSubnet1CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: Public Subnet (AZ1)
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref ACWPVPC
+      AvailabilityZone: !Select [ 1, !GetAZs  '' ]
+      CidrBlock: !Ref PublicSubnet2CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: Public Subnet (AZ2)
+
+  PublicSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref ACWPVPC
+      AvailabilityZone: !Select [ 2, !GetAZs  '' ]
+      CidrBlock: !Ref PublicSubnet3CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: Public Subnet (AZ3)
+
+  # External facing IP addresses for Prod only
+  NatGateway1EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: WPInternetGatewayAttachment
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: AC WP NATGW1
+
+  NatGateway2EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: WPInternetGatewayAttachment
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: AC WP NATGW2
+
+  NatGateway3EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: WPInternetGatewayAttachment
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: AC WP NATGW3
+
+  # NAT gateways connecting public subnet to external gateway
+  NatGateway1:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway1EIP.AllocationId
+      SubnetId: !Ref PublicSubnet1
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: AC WP NATGW1
+
+  NatGateway2:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway2EIP.AllocationId
+      SubnetId: !Ref PublicSubnet2
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: AC WP NATGW2
+
+  NatGateway3:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway3EIP.AllocationId
+      SubnetId: !Ref PublicSubnet3
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: AC WP NATGW3
+
+  # Public Routing
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref ACWPVPC
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: AC WP Public Route Table
+
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: WPInternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: !Ref TheInternetIP
+      GatewayId: !Ref WPInternetGateway
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: AC WP Default Public Route
+
+  PublicSubnetRouteTableAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet1
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: AC WP Public Route Subnet1
+
+  PublicSubnetRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet2
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: AC WP Public Route Subnet2
+
+  PublicSubnetRouteTableAssociation3:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet3
+      Tags:
+        - Key: Product
+          Value: WordPress
+        - Key: Name
+          Value: AC WP Public Route Subnet3
+
+
+
+

@@ -17,15 +17,19 @@ Mappings:
     #   "DB" : "db.t2.medium"
 
 Parameters:
+  NameOfService:
+    Description: "The name of the service this stack is to be used for."
+    Type: String
+
   # sizing and EC2 parameters
   EnvironmentSize:
+    Description: Select Environment Size (S,M,L)
     Type: String
     Default: SMALL
     AllowedValues:
       - SMALL
       - MEDIUM
       - LARGE
-    Description: Select Environment Size (S,M,L)
 
   KeyName:
     Description: Name of an existing EC2 KeyPair to enable SSH access into the server
@@ -93,4 +97,4 @@ Resources:
 Outputs:
   Website:
     Description: The Public DNS for the EC2 Instance
-    Value: !Sub 'http://${EC2Instance.PublicDnsName}'
+    Value: !Sub 'http://${ACWPwebserver1.PublicDnsName}'
