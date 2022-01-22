@@ -257,11 +257,6 @@ Resources:
       RouteTableId: !Ref PublicRouteTable
       DestinationCidrBlock: !Ref TheInternetIP
       GatewayId: !Ref WPInternetGateway
-      Tags:
-        - Key: Product
-          Value: WordPress
-        - Key: Name
-          Value: AC WP Default Public Route
 
   PublicSubnetRouteTableAssociation1:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -309,8 +304,7 @@ Resources:
       # SubnetId: PublicSubnet1
       KeyName: !Ref KeyName
       SecurityGroupIds:
-        # - !Ref SSHSG
-        - !Ref WebServerSG
+        - { "Fn::GetAtt" : ["WebServerSG", "GroupId"] }
       Tags:
         - Key: Product
           Value: Apache
@@ -324,6 +318,7 @@ Resources:
             yum install -y aws-cfn-bootstrap
             # Install the files and packages from the metadata
             /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource ACWPwebserver1  --region ${AWS::Region}
+
   ACWPwebserver2:
     Type: "AWS::EC2::Instance"
     Metadata:
@@ -349,8 +344,7 @@ Resources:
       # SubnetId: PublicSubnet1
       KeyName: !Ref KeyName
       SecurityGroupIds:
-        # - !Ref SSHSG
-        - !Ref WebServerSG
+        - { "Fn::GetAtt" : ["WebServerSG", "GroupId"] }
       Tags:
         - Key: Product
           Value: Apache
@@ -390,8 +384,7 @@ Resources:
       # SubnetId: PublicSubnet1
       KeyName: !Ref KeyName
       SecurityGroupIds:
-        # - !Ref SSHSG
-        - !Ref WebServerSG
+        - { "Fn::GetAtt" : ["WebServerSG", "GroupId"] }
       Tags:
         - Key: Product
           Value: Apache
